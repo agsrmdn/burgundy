@@ -7,15 +7,22 @@ const SUPABASE_ANON_KEY =
 
 const { createClient } = supabase; //[cite: 10]
 const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); //[cite: 10]
+// ==========================================
+// HELPER ELEMEN (Wajib di atas)
+// =========================================
 
 // ==========================================
 // PARAMETER LINK & DIREKTORI ASSET KLIEN (VERCEL READY)
 // ==========================================
-const urlParams = new URLSearchParams(window.location.search); //[cite: 10]
-const slugPasangan = urlParams.get("slug") || "demo"; //[cite: 10]
-const namaTamuParam = urlParams.get("to"); //[cite: 10]
+const urlParams = new URLSearchParams(window.location.search);
+// Baca slug secara fleksibel (bisa ?client=, ?clients=, atau ?slug=)
 const clientSlug =
-  urlParams.get("client") || urlParams.get("clients") || "demo";
+  urlParams.get("client") ||
+  urlParams.get("clients") ||
+  urlParams.get("slug") ||
+  "demo";
+const slugPasangan = clientSlug; // Samakan agar Supabase & Asset Klien sinkron!
+const namaTamuParam = urlParams.get("to");
 
 // Path Folder Asset Klien di Vercel (/clients/nama-klien)
 const CLIENT_URL = `/clients/${clientSlug}`;
@@ -24,7 +31,6 @@ const CLIENT_URL = `/clients/${clientSlug}`;
 // OTOMATISASI LOAD MEDIA KLIEN (FALLBACK TEMPLATE)
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-  // Path default foto template
   const TEMPLATE_FOTO = `${CLIENT_URL}/foto5.jpg`;
 
   // 1. Audio Player
@@ -36,12 +42,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const fileExt = img.src.split(".").pop() || "jpg";
     const targetSrc = `${CLIENT_URL}/${img.id}.${fileExt.length > 4 ? "jpg" : fileExt}`;
 
-    // Pasang foto target dulu
     img.src = targetSrc;
 
-    // JIKA FOTO SPESIFIK TIDAK ADA -> OTOMATIS PAKAI TEMPLATE foto5.jpg
+    // Jika foto spesifik belum ada, otomatis pakai template foto5.jpg
     img.onerror = () => {
-      img.onerror = null; // Cegah infinite loop
+      img.onerror = null;
       img.src = TEMPLATE_FOTO;
     };
   });
