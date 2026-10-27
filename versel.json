@@ -1,0 +1,9 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/klien/:slug",
+      "destination": "/index.html?client=:slug"
+    }
+  ]
+}

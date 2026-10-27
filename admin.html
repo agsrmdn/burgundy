@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel Admin Undangan</title>
+    <meta name="robots" content="noindex, nofollow" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              burgundy: { 900: "#1a0306", 800: "#2a080c" },
+              blush: "#c9a0a0",
+              ivory: "#f3e6e2",
+              rose: "#8f2a3c",
+            },
+            fontFamily: {
+              script: ["Great Vibes", "cursive"],
+              sans: ["Plus Jakarta Sans", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+      /* Warna & gaya mengikuti undangan. CUSTOM: ubah kode warna di sini. */
+      body {
+        background-color: #14040a;
+        background-image: radial-gradient(ellipse 90% 60% at 50% 0%, #4a0f18 0%, #2a080c 45%, #14040a 100%);
+        background-attachment: fixed;
+        -webkit-font-smoothing: antialiased;
+      }
+      .font-quote { font-family: "Cormorant Garamond", Georgia, serif; }
+
+      .panel {
+        border: 1px solid rgba(201, 160, 160, 0.22);
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 1.25rem;
+        box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
+      }
+      .field {
+        width: 100%; background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(201, 160, 160, 0.3); border-radius: 0.75rem;
+        padding: 0.85rem 1rem; font-size: 14px; color: #f3e6e2;
+        transition: border-color 0.25s ease, background 0.25s ease;
+      }
+      .field::placeholder { color: rgba(201, 160, 160, 0.45); }
+      .field:focus { outline: none; border-color: #c9a0a0; background: rgba(255, 255, 255, 0.08); }
+
+      .btn-ivory {
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+        background: #f3e6e2; color: #2a080c; border-radius: 9999px;
+        font-size: 11px; letter-spacing: 0.2em; font-weight: 600; text-transform: uppercase;
+        padding: 0.95rem 1.5rem; transition: background 0.3s ease, transform 0.3s ease;
+      }
+      .btn-ivory:hover { background: #fff; transform: translateY(-1px); }
+      .btn-ivory:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+      .btn-ghost {
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+        border: 1px solid rgba(201, 160, 160, 0.4); color: #f3e6e2; border-radius: 9999px;
+        font-size: 11px; letter-spacing: 0.15em; font-weight: 500; text-transform: uppercase;
+        padding: 0.85rem 1.25rem; background: rgba(255, 255, 255, 0.03);
+        transition: background 0.3s ease, border-color 0.3s ease;
+      }
+      .btn-ghost:hover { background: rgba(201, 160, 160, 0.16); border-color: #c9a0a0; }
+
+      /* Pilihan gaya pesan */
+      .tab {
+        padding: 0.45rem 0.95rem; border-radius: 9999px; font-size: 11px; letter-spacing: 0.12em;
+        text-transform: uppercase; color: rgba(243, 230, 226, 0.6);
+        border: 1px solid rgba(201, 160, 160, 0.25); transition: all 0.25s ease;
+      }
+      .tab:hover { color: #f3e6e2; }
+      .tab.is-active { background: rgba(201, 160, 160, 0.22); color: #f3e6e2; border-color: #c9a0a0; }
+
+      /* Kartu pratinjau pesan: kertas krem, teks bisa diedit */
+      .kertas {
+        background: #f3e6e2; border-radius: 1rem;
+        box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(143, 42, 60, 0.12);
+      }
+      .kertas textarea {
+        width: 100%; min-height: 24rem; resize: vertical; background: transparent;
+        color: #3b0d13; font-size: 13.5px; line-height: 1.75; padding: 1.4rem 1.3rem; border-radius: 1rem;
+      }
+      .kertas textarea:focus { outline: 2px solid rgba(143, 42, 60, 0.35); outline-offset: -2px; }
+
+      /* Kartu statistik */
+      .stat {
+        border: 1px solid rgba(201, 160, 160, 0.2); background: rgba(255, 255, 255, 0.04);
+        border-radius: 1rem; padding: 1.15rem 1rem; text-align: center;
+      }
+      .stat-angka { font-family: "Cormorant Garamond", Georgia, serif; font-size: 3rem; line-height: 1; color: #f3e6e2; }
+      .stat-label { margin-top: 0.55rem; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #c9a0a0; }
+      .titik { display: inline-block; width: 7px; height: 7px; border-radius: 9999px; margin-right: 0.4rem; vertical-align: 1px; }
+
+      /* Muncul halus */
+      .muncul { opacity: 0; transform: translateY(14px); transition: opacity 0.7s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+      .muncul.tampil { opacity: 1; transform: none; }
+
+      #toast {
+        position: fixed; left: 50%; bottom: 1.5rem; transform: translate(-50%, 20px);
+        background: #f3e6e2; color: #2a080c; padding: 0.7rem 1.3rem; border-radius: 9999px;
+        font-size: 12px; font-weight: 600; letter-spacing: 0.04em; opacity: 0; pointer-events: none;
+        transition: opacity 0.3s ease, transform 0.3s ease; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+      }
+      #toast.tampil { opacity: 1; transform: translate(-50%, 0); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .muncul { opacity: 1; transform: none; transition: none; }
+        #toast { transition: none; }
+      }
+    </style>
+  </head>
+
+  <body class="text-ivory font-sans px-5 py-12 min-h-screen">
+    <main class="max-w-md mx-auto space-y-6">
+      <!-- KEPALA -->
+      <header class="text-center space-y-1 pb-2">
+        <p class="font-quote italic text-lg text-blush">Panel Pasangan</p>
+        <h1 class="font-script text-[3.1rem] leading-none text-ivory">Undangan Digital</h1>
+        <p id="nama-pasangan" class="font-quote text-xl text-ivory/80 pt-1">Memuat data...</p>
+        <div class="mx-auto mt-4 h-px w-10 bg-blush/50"></div>
+      </header>
+
+      <!-- ===== 1. LINK & PESAN UNDANGAN ===== -->
+      <section class="panel p-6 space-y-5">
+        <div>
+          <p class="text-[10px] uppercase tracking-[0.25em] text-blush">Langkah 1</p>
+          <h2 class="font-quote text-2xl text-ivory mt-0.5">Buat Link &amp; Pesan Undangan</h2>
+        </div>
+
+        <form id="form-link" class="space-y-4" novalidate>
+          <div class="space-y-1.5">
+            <label for="nama-tamu-input" class="block text-[10px] uppercase tracking-[0.2em] text-blush">Nama Tamu Undangan</label>
+            <input type="text" id="nama-tamu-input" autocomplete="off" placeholder="Contoh: Bapak Budi Santoso" class="field" />
+            <p id="galat-nama" class="text-xs text-rose-300 min-h-[1rem]" aria-live="polite"></p>
+          </div>
+          <button type="submit" id="btn-generate" class="btn-ivory w-full" disabled>Generate Link &amp; Pesan</button>
+        </form>
+
+        <!-- PRATINJAU PESAN (muncul setelah generate) -->
+        <div id="pratinjau" class="hidden muncul space-y-4 pt-2">
+          <div class="h-px bg-blush/20"></div>
+
+          <div>
+            <p class="text-[10px] uppercase tracking-[0.25em] text-blush">Pratinjau Pesan</p>
+            <p class="font-quote italic text-[1.05rem] text-ivory/70 mt-1">
+              Link sudah ada di dalam pesan. Silakan ubah kata-katanya sesuka Anda sebelum disalin.
+            </p>
+          </div>
+
+          <!-- Pilihan gaya pesan. CUSTOM: isi tiap gaya ada di TEMPLATE_PESAN pada bagian <script> di bawah. -->
+          <div class="flex flex-wrap gap-2" role="tablist" aria-label="Gaya pesan">
+            <button type="button" class="tab is-active" data-gaya="hangat" role="tab">Hangat</button>
+            <button type="button" class="tab" data-gaya="formal" role="tab">Formal</button>
+            <button type="button" class="tab" data-gaya="singkat" role="tab">Singkat</button>
+          </div>
+
+          <div class="kertas">
+            <label for="pesan" class="sr-only">Isi pesan undangan</label>
+            <textarea id="pesan" spellcheck="false"></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <button type="button" id="btn-salin-pesan" class="btn-ivory">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 8V5a1 1 0 011-1h10a1 1 0 011 1v10a1 1 0 01-1 1h-3M5 8h10a1 1 0 011 1v10a1 1 0 01-1 1H5a1 1 0 01-1-1V9a1 1 0 011-1z"/></svg>
+              Salin Pesan
+            </button>
+            <button type="button" id="btn-salin-link" class="btn-ghost">Salin Link Saja</button>
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="hasil-link" class="block text-[10px] uppercase tracking-[0.2em] text-blush">Link khusus tamu</label>
+            <input type="text" id="hasil-link" readonly class="field text-xs text-ivory/70 select-all" />
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 2. STATISTIK ===== -->
+      <section class="panel p-6 space-y-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-[10px] uppercase tracking-[0.25em] text-blush">Langkah 2</p>
+            <h2 class="font-quote text-2xl text-ivory mt-0.5">Statistik Tamu</h2>
+          </div>
+          <button type="button" id="btn-segarkan" class="btn-ghost !py-2 !px-3.5 !text-[10px]" aria-label="Perbarui statistik">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6M5.6 15A8 8 0 0019 12M18.4 9A8 8 0 005 12"/></svg>
+            Perbarui
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="stat">
+            <div id="st-hadir" class="stat-angka">0</div>
+            <div class="stat-label"><span class="titik bg-emerald-300"></span>Hadir</div>
+          </div>
+          <div class="stat">
+            <div id="st-tidak" class="stat-angka">0</div>
+            <div class="stat-label"><span class="titik bg-rose-300"></span>Berhalangan</div>
+          </div>
+          <div class="stat">
+            <div id="st-komen" class="stat-angka">0</div>
+            <div class="stat-label"><span class="titik bg-blush"></span>Komentar</div>
+          </div>
+          <div class="stat">
+            <div id="st-balasan" class="stat-angka">0</div>
+            <div class="stat-label"><span class="titik bg-ivory/60"></span>Balasan</div>
+          </div>
+        </div>
+
+        <!-- Perbandingan kehadiran -->
+        <div class="space-y-2">
+          <div class="flex items-baseline justify-between">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-blush">Tingkat kehadiran</p>
+            <p id="st-persen" class="font-quote text-xl text-ivory">—</p>
+          </div>
+          <div class="h-2 rounded-full bg-white/10 overflow-hidden">
+            <div id="st-bar" class="h-full rounded-full" style="width: 0%; background: linear-gradient(90deg, #c9a0a0, #f3e6e2); transition: width 1s cubic-bezier(0.22, 1, 0.36, 1)"></div>
+          </div>
+          <p id="st-ket" class="text-xs text-ivory/50">Memuat...</p>
+        </div>
+
+        <p id="st-waktu" class="text-[11px] text-ivory/40 text-center"></p>
+      </section>
+
+      <p class="text-center text-[11px] text-ivory/35 pb-4">
+        Statistik dihitung otomatis dari data tamu. Nama dan isi ucapan tidak ditampilkan di halaman ini.
+      </p>
+    </main>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      // ==========================================
+      // KREDENSIAL SUPABASE (ganti dengan milik Anda)
+      // ==========================================
+      const SUPABASE_URL = "https://nqeclnbrzzmyabgwmpth.supabase.co";
+      const SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xZWNsbmJyenpteWFiZ3dtcHRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyMzAzNTQsImV4cCI6MjEwNzgwNjM1NH0.cXvgbhJZCtpZVdPTbjoY7qTLyjS3uKZ53HurbTaUulM";
+      const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // ==========================================
+      // PENGATURAN
+      // ==========================================
+      // Pasangan dipilih lewat alamat halaman ini: admin.html?slug=nama-pasangan  (tanpa ?slug= = "demo")
+      const slugPasangan = new URLSearchParams(window.location.search).get("slug") || "demo";
+
+      // CUSTOM: zona waktu acara (harus sama dengan ACARA.zona di js/app.js). WIB +07:00 | WITA +08:00 | WIT +09:00
+      const ZONA = "+07:00";
+
+      // CUSTOM: keterangan waktu yang ikut masuk ke pesan, mis. "Pukul 08.00 WIB - Selesai". Kosongkan kalau tidak perlu.
+      const WAKTU_TEKS = "";
+
+      // CUSTOM: seberapa sering statistik diperbarui otomatis (detik). 0 = tidak otomatis.
+      const SEGARKAN_DETIK = 60;
+
+      // ==========================================
+      // ISI PESAN UNDANGAN (template)
+      // Tanda *teks* = huruf tebal di WhatsApp. {d} berisi: nama, wanita, pria, tanggal, lokasi, waktu, link.
+      // CUSTOM: ubah kata-katanya sesuka Anda. Tambah gaya baru: tambahkan satu entri di sini
+      // dan satu <button class="tab" data-gaya="..."> di atas.
+      // ==========================================
+      const TEMPLATE_PESAN = {
+        hangat: (d) => `Assalamu’alaikum Warahmatullahi Wabarakatuh
+
+Kepada ${d.nama} yang kami hormati,
+
+Ada begitu banyak hal yang mengantar kami sampai di titik ini, dan salah satunya adalah doa serta kebaikan orang-orang terdekat seperti Anda.
+
+Dengan penuh rasa syukur, kami mengundang Anda untuk hadir dan menjadi bagian dari hari bahagia kami:
+
+*${d.wanita} & ${d.pria}*
+
+📅 ${d.tanggal}${d.waktu ? "\n🕘 " + d.waktu : ""}
+📍 ${d.lokasi}
+
+Kehadiran dan doa restu Anda adalah hadiah terindah yang akan selalu kami kenang.
+
+Detail acara, peta lokasi, dan konfirmasi kehadiran dapat dilihat di undangan digital berikut:
+${d.link}
+
+Atas segala doa dan kebaikan Anda, kami ucapkan terima kasih yang sebesar-besarnya.
+
+Wassalamu’alaikum Warahmatullahi Wabarakatuh
+
+Kami yang berbahagia,
+*${d.wanita} & ${d.pria}*`,
+
+        formal: (d) => `Assalamu’alaikum Warahmatullahi Wabarakatuh
+
+Kepada Yth.
+Bapak/Ibu/Saudara/i
+*${d.nama}*
+di tempat
+
+Dengan memohon rahmat dan ridho Allah SWT, kami bermaksud menyelenggarakan pernikahan putra-putri kami:
+
+*${d.wanita} & ${d.pria}*
+
+Yang insya Allah akan dilaksanakan pada:
+Hari, tanggal : ${d.tanggal}${d.waktu ? "\nWaktu : " + d.waktu : ""}
+Tempat : ${d.lokasi}
+
+Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan hadir untuk memberikan doa restu kepada kedua mempelai.
+
+Informasi lengkap acara dan konfirmasi kehadiran dapat diakses melalui undangan digital berikut:
+${d.link}
+
+Atas kehadiran dan doa restunya, kami mengucapkan terima kasih.
+
+Wassalamu’alaikum Warahmatullahi Wabarakatuh
+
+Kami yang berbahagia,
+*${d.wanita} & ${d.pria}*
+beserta keluarga`,
+
+        singkat: (d) => `Assalamu’alaikum Wr. Wb.
+
+Kepada Yth. ${d.nama},
+
+Dengan memohon rahmat Allah SWT, kami mengundang Anda ke pernikahan kami, *${d.wanita} & ${d.pria}*, pada ${d.tanggal}.
+
+Detail acara dan konfirmasi kehadiran:
+${d.link}
+
+Doa dan kehadiran Anda sangat berarti bagi kami. Terima kasih.
+
+Wassalamu’alaikum Wr. Wb.
+${d.wanita} & ${d.pria}`,
+      };
+
+      // ==========================================
+      // ALAT BANTU
+      // ==========================================
+      const $ = (id) => document.getElementById(id);
+      const kurangiGerak = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      let pasangan = null; // data pasangan dari Supabase
+      let gayaAktif = "hangat";
+      let linkTerakhir = "";
+      let namaTerakhir = "";
+
+      // Tanggal dibaca menurut zona acara (kolom timestamptz dikirim Supabase dalam UTC)
+      function tanggalDiZona(str) {
+        const m = /^([+-])(\d{2}):?(\d{2})$/.exec(ZONA);
+        const menit = m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : 0;
+        const d = new Date(str);
+        if (isNaN(d)) return null;
+        const g = new Date(d.getTime() + menit * 60000);
+        return new Date(g.getUTCFullYear(), g.getUTCMonth(), g.getUTCDate());
+      }
+      function tanggalTeks(str) {
+        const t = tanggalDiZona(str);
+        return t ? t.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "—";
+      }
+
+      let timerToast = null;
+      function tampilToast(teks) {
+        const el = $("toast");
+        el.textContent = teks;
+        el.classList.add("tampil");
+        clearTimeout(timerToast);
+        timerToast = setTimeout(() => el.classList.remove("tampil"), 2200);
+      }
+
+      async function salinTeks(teks) {
+        try {
+          await navigator.clipboard.writeText(teks);
+          return true;
+        } catch {
+          const ta = document.createElement("textarea");
+          ta.value = teks;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          let ok = false;
+          try { ok = document.execCommand("copy"); } catch {}
+          ta.remove();
+          return ok;
+        }
+      }
+
+      // ==========================================
+      // 1. DATA PASANGAN
+      // ==========================================
+      async function muatPasangan() {
+        const { data, error } = await _supabase.from("pasangan").select("*").eq("slug", slugPasangan).single();
+        if (error || !data) {
+          $("nama-pasangan").textContent = `Data dengan slug "${slugPasangan}" tidak ditemukan`;
+          $("nama-pasangan").classList.add("text-rose-300");
+          muatStatistikKosong();
+          return;
+        }
+        pasangan = data;
+        $("nama-pasangan").textContent = `${data.nama_wanita} & ${data.nama_pria}`;
+        $("btn-generate").disabled = false;
+        muatStatistik();
+        if (SEGARKAN_DETIK > 0) {
+          setInterval(() => { if (!document.hidden) muatStatistik(); }, SEGARKAN_DETIK * 1000);
+        }
+      }
+
+      // ==========================================
+      // 2. GENERATE LINK & PESAN
+      // ==========================================
+      function susunPesan() {
+        const d = {
+          nama: namaTerakhir,
+          wanita: pasangan.nama_wanita,
+          pria: pasangan.nama_pria,
+          tanggal: tanggalTeks(pasangan.tanggal_acara),
+          lokasi: pasangan.lokasi_acara || "—",
+          waktu: WAKTU_TEKS,
+          link: linkTerakhir,
+        };
+        return TEMPLATE_PESAN[gayaAktif](d);
+      }
+
+      $("form-link").addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (!pasangan) return;
+        const nama = $("nama-tamu-input").value.trim();
+        const galat = $("galat-nama");
+        if (!nama) {
+          galat.textContent = "Masukkan nama tamu terlebih dahulu.";
+          $("nama-tamu-input").focus();
+          return;
+        }
+        galat.textContent = "";
+
+        // Alamat undangan: index.html di folder yang sama dengan halaman admin ini
+        const u = new URL("index.html", window.location.href);
+        u.searchParams.set("slug", pasangan.slug);
+        u.searchParams.set("to", nama);
+
+        namaTerakhir = nama;
+        linkTerakhir = u.toString();
+        $("hasil-link").value = linkTerakhir;
+        $("pesan").value = susunPesan();
+
+        const box = $("pratinjau");
+        const baru = box.classList.contains("hidden");
+        box.classList.remove("hidden");
+        if (baru) requestAnimationFrame(() => requestAnimationFrame(() => box.classList.add("tampil")));
+        box.scrollIntoView({ behavior: kurangiGerak ? "auto" : "smooth", block: "nearest" });
+      });
+
+      // Ganti gaya pesan
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          gayaAktif = tab.dataset.gaya;
+          document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("is-active", t === tab));
+          if (linkTerakhir) $("pesan").value = susunPesan();
+        });
+      });
+
+      $("btn-salin-pesan").addEventListener("click", async () => {
+        const ok = await salinTeks($("pesan").value);
+        tampilToast(ok ? "Pesan tersalin" : "Gagal menyalin, salin manual");
+      });
+      $("btn-salin-link").addEventListener("click", async () => {
+        const ok = await salinTeks(linkTerakhir);
+        tampilToast(ok ? "Link tersalin" : "Gagal menyalin, salin manual");
+      });
+
+      // ==========================================
+      // 3. STATISTIK (hanya angka, tanpa nama / isi ucapan)
+      // ==========================================
+      function hitungNaik(el, tujuan) {
+        if (tujuan === null || tujuan === undefined) {
+          el.textContent = "—";
+          el.dataset.nilai = 0;
+          return;
+        }
+        const awal = Number(el.dataset.nilai || 0);
+        el.dataset.nilai = tujuan;
+        if (kurangiGerak || awal === tujuan) {
+          el.textContent = tujuan;
+          return;
+        }
+        const mulai = performance.now();
+        const durasi = 900;
+        const langkah = (t) => {
+          const p = Math.min(1, (t - mulai) / durasi);
+          const e = 1 - Math.pow(1 - p, 3);
+          el.textContent = Math.round(awal + (tujuan - awal) * e);
+          if (p < 1) requestAnimationFrame(langkah);
+        };
+        requestAnimationFrame(langkah);
+      }
+
+      function hitungBaris(tabel, saring) {
+        let q = _supabase.from(tabel).select("id", { count: "exact", head: true }).eq("pasangan_id", pasangan.id);
+        if (saring) q = saring(q);
+        return q;
+      }
+
+      async function muatStatistik() {
+        if (!pasangan) return;
+        const [hadir, tidak, komen, balasan] = await Promise.all([
+          hitungBaris("ucapan_tamu", (q) => q.eq("kehadiran", "Hadir")),
+          hitungBaris("ucapan_tamu", (q) => q.eq("kehadiran", "Tidak Hadir")),
+          hitungBaris("ucapan_tamu"),
+          hitungBaris("balasan_ucapan"), // tabel baru; kalau belum dibuat, kartunya menampilkan "—"
+        ]);
+        const angka = (r) => (r.error ? null : r.count ?? 0);
+        const nHadir = angka(hadir);
+        const nTidak = angka(tidak);
+
+        hitungNaik($("st-hadir"), nHadir);
+        hitungNaik($("st-tidak"), nTidak);
+        hitungNaik($("st-komen"), angka(komen));
+        hitungNaik($("st-balasan"), angka(balasan));
+
+        const total = (nHadir ?? 0) + (nTidak ?? 0);
+        const persen = total > 0 ? Math.round(((nHadir ?? 0) / total) * 100) : 0;
+        $("st-bar").style.width = persen + "%";
+        $("st-persen").textContent = total > 0 ? persen + "%" : "—";
+        $("st-ket").textContent =
+          total > 0 ? `${nHadir} dari ${total} tamu yang sudah konfirmasi akan hadir.` : "Belum ada konfirmasi kehadiran.";
+
+        const jam = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+        $("st-waktu").textContent = "Diperbarui pukul " + jam;
+      }
+
+      function muatStatistikKosong() {
+        ["st-hadir", "st-tidak", "st-komen", "st-balasan"].forEach((id) => ($(id).textContent = "—"));
+        $("st-ket").textContent = "Statistik belum tersedia.";
+      }
+
+      $("btn-segarkan").addEventListener("click", async () => {
+        await muatStatistik();
+        tampilToast("Statistik diperbarui");
+      });
+
+      muatPasangan();
+    </script>
+  </body>
+</html>
